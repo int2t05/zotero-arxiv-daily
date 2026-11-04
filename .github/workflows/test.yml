@@ -29,6 +29,8 @@ jobs:
         run: |
           export DEBUG=true
           printf "%b\n" "$CUSTOM_CONFIG" > config/custom.yaml
+          # 测试输出与生产隔离: 重定向 markdown_out_dir, 避免覆盖正式每日精选
+          sed -i 's#site/daily#site/daily-test#' config/custom.yaml
           echo "Use custom config: "
           cat config/custom.yaml
           uv run src/zotero_arxiv_daily/main.py

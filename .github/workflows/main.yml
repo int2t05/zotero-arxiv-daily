@@ -36,12 +36,22 @@ jobs:
           cat config/custom.yaml
           uv run src/zotero_arxiv_daily/main.py
 
+      - name: Ensure digest file (empty-day placeholder)
+        run: |
+          f="site/daily/$(date -u +%F).md"
+          if [ ! -f "$f" ]; then
+            mkdir -p site/daily
+            printf '# 每日 arXiv 精选 · %s\n\n> 今日无匹配的新论文（或数据源暂不可用）。\n' "$(date -u +%F)" > "$f"
+            echo "Placeholder digest written: $f"
+          fi
+
       - name: Commit daily digest
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/daily
           git diff --cached --quiet || git commit -m "daily digest $(date -u +%F)"
+          git pull --rebase origin main || true
           git push
 
       - name: Upload digest artifact

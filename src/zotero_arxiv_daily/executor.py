@@ -38,7 +38,9 @@ class Executor:
             source: get_retriever_cls(source)(config) for source in config.executor.source
         }
         self.reranker = get_reranker_cls(config.executor.reranker)(config)
-        self.openai_client = OpenAI(api_key=config.llm.api.key, base_url=config.llm.api.base_url)
+        # timeout/max_retries 显式收紧, 避免端点异常时单请求挂 10 分钟
+        self.openai_client = OpenAI(api_key=config.llm.api.key, base_url=config.llm.api.base_url,
+                                    timeout=60, max_retries=2)
     def fetch_zotero_corpus(self) -> list[CorpusPaper]:
         logger.info("Fetching zotero corpus")
         zot = zotero.Zotero(self.config.zotero.user_id, 'user', self.config.zotero.api_key)
@@ -112,9 +114,24 @@ class Executor:
             reranked_papers = self.reranker.rerank(all_papers, corpus)
             reranked_papers = reranked_papers[:self.config.executor.max_paper_num]
             logger.info("Generating TLDR and affiliations...")
+            # LLM 降级路线: llm.enabled=false 直接跳过; 连续 3 次失败熔断为纯摘要模式
+            llm_enabled = self.config.llm.get("enabled", True)
+            consecutive_failures = 0
             for p in tqdm(reranked_papers):
+                if not llm_enabled:
+                    p.tldr = p.abstract
+                    continue
                 p.generate_tldr(self.openai_client, self.config.llm)
-                p.generate_affiliations(self.openai_client, self.config.llm)
+                failed = (not p.tldr) or p.tldr == p.abstract or p.tldr.startswith("Failed to generate TLDR")
+                if failed:
+                    consecutive_failures += 1
+                    if consecutive_failures >= 3:
+                        logger.warning("LLM 连续 3 次失败, 本次运行降级为纯摘要模式(不再调用 LLM)")
+                        llm_enabled = False
+                        continue
+                else:
+                    consecutive_failures = 0
+                    p.generate_affiliations(self.openai_client, self.config.llm)
         elif not self.config.executor.send_empty:
             logger.info("No new papers found. No email will be sent.")
             return
