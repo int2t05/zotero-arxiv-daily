@@ -32,6 +32,8 @@ def render_markdown(papers) -> str:
         link = f"[原文]({p.url})"
         if p.pdf_url:
             link += f" ｜ [PDF]({p.pdf_url})"
+        if p.code_url:
+            link += f" ｜ [代码]({p.code_url})"
         lines.append(link)
         lines.append("")
     return "\n".join(lines)

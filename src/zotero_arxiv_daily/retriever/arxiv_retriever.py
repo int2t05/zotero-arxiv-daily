@@ -2,7 +2,7 @@ from .base import BaseRetriever, register_retriever
 import arxiv
 from arxiv import Result as ArxivResult
 from ..protocol import Paper
-from ..utils import extract_markdown_from_pdf, extract_tex_code_from_tar
+from ..utils import extract_code_url, extract_markdown_from_pdf, extract_tex_code_from_tar
 import calendar
 from datetime import datetime, timezone
 import multiprocessing
@@ -287,6 +287,10 @@ class ArxivRetriever(BaseRetriever):
             full_text = extract_text_from_html(raw_paper)
         if full_text is None:
             full_text = extract_text_from_pdf(raw_paper)
+        # 代码链接采集: 摘要 > arXiv comment > 正文(LaTeX 源码)
+        code_url = (extract_code_url(abstract)
+                    or extract_code_url(raw_paper.comment or "")
+                    or extract_code_url(full_text or ""))
         return Paper(
             source=self.name,
             title=title,
@@ -295,6 +299,7 @@ class ArxivRetriever(BaseRetriever):
             url=raw_paper.entry_id,
             pdf_url=pdf_url,
             full_text=full_text,
+            code_url=code_url,
         )
 
 

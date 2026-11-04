@@ -112,6 +112,13 @@ class Executor:
         if len(all_papers) > 0:
             logger.info("Reranking papers...")
             reranked_papers = self.reranker.rerank(all_papers, corpus)
+            # 有开源代码的论文加权(在截断前重排, 使其排名更靠前)
+            code_bonus = self.config.executor.get("code_bonus", 1.15)
+            if code_bonus and code_bonus != 1.0:
+                for p in reranked_papers:
+                    if p.code_url:
+                        p.score = (p.score or 0.0) * code_bonus
+                reranked_papers.sort(key=lambda x: x.score or 0.0, reverse=True)
             reranked_papers = reranked_papers[:self.config.executor.max_paper_num]
             logger.info("Generating TLDR and affiliations...")
             # LLM 降级路线: llm.enabled=false 直接跳过; 连续 3 次失败熔断为纯摘要模式

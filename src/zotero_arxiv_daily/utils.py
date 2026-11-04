@@ -169,3 +169,32 @@ def send_email(config:DictConfig, html:str):
     server.login(sender, password)
     server.sendmail(sender, [receiver], msg.as_string())
     server.quit()
+
+_GITHUB_REPO_RE = re.compile(
+    r"github\.com/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)",
+    flags=re.IGNORECASE,
+)
+_REPO_URL_NOISE = (
+    "/topics/", "/features/", "/about", "/pricing", "/security", "/sponsors",
+    "/orgs/", "/settings", "/search", "/marketplace", "github.io",
+)
+
+
+def extract_code_url(text: str | None) -> str | None:
+    """从摘要/评论/正文中提取首个 GitHub 仓库链接(规范化到仓库根)"""
+    if not text:
+        return None
+    for m in _GITHUB_REPO_RE.finditer(text):
+        owner = m.group("owner").lower()
+        repo = m.group("repo").rstrip(".")   # 去掉句子末尾被吞进的标点
+        if not repo or repo in {"www"}:
+            continue
+        if owner in {"topics", "features", "about", "pricing", "security", "sponsors", "orgs", "settings", "search", "marketplace", "apps"}:
+            continue
+        if repo.lower().endswith(".github.io"):
+            continue
+        tail = text[m.end():m.end() + 12]
+        if tail.startswith(_REPO_URL_NOISE):
+            continue
+        return f"https://github.com/{m.group('owner')}/{repo}"
+    return None
