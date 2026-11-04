@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """每日精选导出为 Markdown（供 VitePress 站点渲染），替代邮件输出"""
+import re
 from datetime import datetime
 from loguru import logger
 
@@ -21,7 +22,8 @@ def render_markdown(papers) -> str:
         lines.append(f"`相似度 {score}` ｜ {authors}{aff}")
         lines.append("")
         if p.tldr:
-            lines.append(f"**TL;DR**：{p.tldr}")
+            tldr = re.sub(r"^\*{0,2}\s*TL;?DR\s*[:：]?\*{0,2}\s*", "", p.tldr.strip())
+            lines.append(f"**TL;DR**：{tldr}")
             lines.append("")
         snippet = (p.abstract or "").strip()
         if snippet:

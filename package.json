@@ -1,0 +1,7 @@
+{
+  "name": "zotero-arxiv-daily",
+  "private": true,
+  "devDependencies": {
+    "vitepress": "^1.6.3"
+  }
+}

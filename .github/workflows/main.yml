@@ -4,21 +4,12 @@ on:
   schedule:
     - cron: '0 22 * * *'
 
-permissions:
-  contents: write   # 提交每日 MD
-  pages: write      # 发布 Pages
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
-  calculate-and-publish:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # 阶段一: 跑管线生成每日 MD 并提交(耗时长; 失败只影响本段)
+  digest:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -53,6 +44,35 @@ jobs:
           git diff --cached --quiet || git commit -m "daily digest $(date -u +%F)"
           git push
 
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-md
+          path: site/daily
+
+  # 阶段二: VitePress 构建 + Pages 发布(失败可只重跑本段, 不必重烧管线)
+  deploy:
+    needs: digest
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download digest artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: daily-md
+          path: site/daily
+
       - name: Generate index
         run: |
           {
@@ -69,10 +89,12 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Build VitePress
-        run: npx --yes vitepress build site
+      - name: Install and build VitePress
+        run: |
+          npm install --no-fund --no-audit
+          npx vitepress build site
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
