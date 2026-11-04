@@ -1,12 +1,18 @@
 name: Daily digest site
 on:
   workflow_dispatch:
+    inputs:
+      deploy_only:
+        description: '跳过管线, 直接用仓库已提交的 site/daily 构建发布(改站点样式/icon 时用)'
+        type: boolean
+        default: false
   schedule:
     - cron: '0 22 * * *'
 
 jobs:
   # 阶段一: 跑管线生成每日 MD 并提交(耗时长; 失败只影响本段)
   digest:
+    if: ${{ inputs.deploy_only != true }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -54,15 +60,10 @@ jobs:
           git pull --rebase origin main || true
           git push
 
-      - name: Upload digest artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: daily-md
-          path: site/daily
-
-  # 阶段二: VitePress 构建 + Pages 发布(失败可只重跑本段, 不必重烧管线)
+  # 阶段二: VitePress 构建 + Pages 发布(改样式/icon 可用 deploy_only 只跑本段)
   deploy:
     needs: digest
+    if: ${{ !cancelled() && (needs.digest.result == 'success' || inputs.deploy_only == true) }}
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -76,12 +77,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Download digest artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: daily-md
-          path: site/daily
 
       - name: Generate index
         run: |

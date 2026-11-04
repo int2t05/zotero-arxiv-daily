@@ -1,13 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- 主题: EC(上升的进化箭头) × LLM(灵光火花) -->
-  <defs>
-    <linearGradient id="g" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0" stop-color="#4338CA"/>
-      <stop offset="1" stop-color="#0EA5E9"/>
-    </linearGradient>
-  </defs>
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#g)"/>
-  <path d="M14 50 L48 16" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/>
-  <path d="M26 16 H48 V38" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <path d="M18 12 l2 5.2 L25.2 19.2 l-5.2 2 L18 26.4 l-2 -5.2 L10.8 19.2 l5.2 -2 Z" fill="#FDE047"/>
-</svg>
+<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg t="1732696917615" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1988" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200"><path d="M960.9 405.7l-448 323.4-448-323.4 448-323.4z" fill="#5B79FB" p-id="1989"></path><path d="M187.3 139.1h651.2v795.4H187.3z" fill="#E5ECFF" p-id="1990"></path><path d="M335 222h355.7v73.9H335z" fill="#FF7E71" p-id="1991"></path><path d="M258.3 358h509.3v37H258.3zM258.3 420.7h509.3v37H258.3zM258.3 483.4h509.3v37H258.3zM258.3 546.1h509.3v37H258.3z" fill="#FFFFFF" p-id="1992"></path><path d="M64.9 934.5h896V405.7l-448 323.4-448-323.4z" fill="#5B79FB" p-id="1993"></path><path d="M64.9 934.5h896L594.6 670.1H431.2z" fill="#83A4FF" p-id="1994"></path></svg>
