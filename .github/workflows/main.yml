@@ -1,11 +1,23 @@
-name: Send emails daily
+name: Daily digest site
 on:
   workflow_dispatch:
   schedule:
     - cron: '0 22 * * *'
 
+permissions:
+  contents: write   # 提交每日 MD
+  pages: write      # 发布 Pages
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
-  calculate-and-send:
+  calculate-and-publish:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,3 +44,41 @@ jobs:
           echo "Use custom config: "
           cat config/custom.yaml
           uv run src/zotero_arxiv_daily/main.py
+
+      - name: Commit daily digest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/daily
+          git diff --cached --quiet || git commit -m "daily digest $(date -u +%F)"
+          git push
+
+      - name: Generate index
+        run: |
+          {
+            echo "# 每日 arXiv 精选"
+            echo
+            echo "基于 Zotero 兴趣画像与 LLM 打分的每日 arXiv 论文推送。"
+            echo
+            for f in $(ls site/daily/*.md 2>/dev/null | sort -r); do
+              b=$(basename "$f" .md)
+              echo "- [$b](/daily/$b)"
+            done
+          } > site/index.md
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build VitePress
+        run: npx --yes vitepress build site
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/.vitepress/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

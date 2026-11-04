@@ -118,7 +118,15 @@ class Executor:
         elif not self.config.executor.send_empty:
             logger.info("No new papers found. No email will be sent.")
             return
-        logger.info("Sending email...")
-        email_content = render_email(reranked_papers)
-        send_email(self.config, email_content)
-        logger.info("Email sent successfully")
+        # Markdown 输出（VitePress 站点数据源），配置 executor.markdown_out_dir 即启用
+        if md_dir := self.config.executor.get("markdown_out_dir", None):
+            from .render_markdown import write_daily_markdown
+            write_daily_markdown(reranked_papers, md_dir)
+        # 邮件输出默认保留，executor.send_email=false 可关闭
+        if self.config.executor.get("send_email", True):
+            logger.info("Sending email...")
+            email_content = render_email(reranked_papers)
+            send_email(self.config, email_content)
+            logger.info("Email sent successfully")
+        else:
+            logger.info("Email disabled (executor.send_email=false)")
