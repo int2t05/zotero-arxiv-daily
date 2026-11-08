@@ -55,6 +55,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # CI 覆写了被跟踪的 config/custom.yaml，先还原避免脏树阻断 pull --rebase（并发推送保护）
+          git restore config/custom.yaml 2>/dev/null || true
           git add site/daily
           git diff --cached --quiet || git commit -m "daily digest $(date -u +%F)"
           git pull --rebase origin main || true

@@ -281,3 +281,29 @@ def test_run_no_papers_send_empty_true(config, monkeypatch):
     assert len(sent) == 1, "Email should be sent even with no papers when send_empty=true"
     _, _, body = sent[0]
     assert "text/html" in body
+
+
+# ---------------------------------------------------------------------------
+# _load_known_paper_ids — 历史日报去重源
+# ---------------------------------------------------------------------------
+
+
+def test_load_known_paper_ids_extracts_ids_from_digests(tmp_path):
+    executor = Executor.__new__(Executor)
+    executor.config = OmegaConf.create({"executor": {"markdown_out_dir": str(tmp_path)}})
+    (tmp_path / "2026-11-06.md").write_text(
+        "[原文](https://arxiv.org/abs/2609.22090v1)\n", encoding="utf-8"
+    )
+    (tmp_path / "2026-11-07.md").write_text(
+        "[原文](https://arxiv.org/abs/2611.08483) ｜ [PDF](https://arxiv.org/pdf/2611.08483v1)\n",
+        encoding="utf-8",
+    )
+    assert executor._load_known_paper_ids() == {"2609.22090", "2611.08483"}
+
+
+def test_load_known_paper_ids_empty_without_dir_or_config(tmp_path):
+    executor = Executor.__new__(Executor)
+    executor.config = OmegaConf.create({"executor": {"markdown_out_dir": str(tmp_path / "missing")}})
+    assert executor._load_known_paper_ids() == set()
+    executor.config = OmegaConf.create({"executor": {"markdown_out_dir": None}})
+    assert executor._load_known_paper_ids() == set()

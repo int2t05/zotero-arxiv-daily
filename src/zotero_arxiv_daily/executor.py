@@ -5,12 +5,17 @@ from .utils import glob_match
 from .retriever import get_retriever_cls
 from .protocol import CorpusPaper
 import random
+import re
 from datetime import datetime
+from pathlib import Path
 from .reranker import get_reranker_cls
 from .construct_email import render_email
 from .utils import send_email
 from openai import OpenAI
 from tqdm import tqdm
+
+# 日报中 [原文](https://arxiv.org/abs/2611.08483) / [PDF](https://arxiv.org/pdf/...) 链接里的论文编号（不含版本号）
+_ARXIV_ID_PATTERN = re.compile(r"arxiv\.org/(?:abs|pdf)/(\d{4}\.\d{4,5})")
 
 
 def normalize_path_patterns(patterns: list[str] | ListConfig | None, config_key: str) -> list[str] | None:
@@ -92,14 +97,31 @@ class Executor:
         return corpus
 
     
+    def _load_known_paper_ids(self) -> set[str]:
+        """从历史日报提取已推送的 arXiv 论文 ID，供检索层跨日去重（每篇论文全站只出现一次）"""
+        md_dir = self.config.executor.get("markdown_out_dir", None)
+        if not md_dir:
+            return set()
+        root = Path(md_dir)
+        if not root.is_dir():
+            return set()
+        ids: set[str] = set()
+        for md_file in root.glob("*.md"):
+            ids.update(_ARXIV_ID_PATTERN.findall(md_file.read_text(encoding="utf-8", errors="ignore")))
+        return ids
+
     def run(self):
         corpus = self.fetch_zotero_corpus()
         corpus = self.filter_corpus(corpus)
         if len(corpus) == 0:
             logger.error(f"No zotero papers found. Please check your zotero settings:\n{self.config.zotero}")
             return
+        known_ids = self._load_known_paper_ids()
+        if known_ids:
+            logger.info(f"Loaded {len(known_ids)} paper ids from previous digests for dedup")
         all_papers = []
         for source, retriever in self.retrievers.items():
+            retriever.set_known_ids(known_ids)
             logger.info(f"Retrieving {source} papers...")
             papers = retriever.retrieve_papers()
             if len(papers) == 0:

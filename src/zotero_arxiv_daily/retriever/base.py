@@ -12,6 +12,11 @@ class BaseRetriever(ABC):
     def __init__(self, config:DictConfig):
         self.config = config
         self.retriever_config = getattr(config.source,self.name)
+        # 已推送论文 ID（由 Executor 从历史日报提取），用于跨日去重；各检索器自行决定是否消费
+        self.known_ids: set[str] = set()
+
+    def set_known_ids(self, ids: set[str]) -> None:
+        self.known_ids = set(ids)
 
     @abstractmethod
     def _retrieve_raw_papers(self) -> list[RawPaperItem]:

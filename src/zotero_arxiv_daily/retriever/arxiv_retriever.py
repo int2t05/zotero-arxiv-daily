@@ -32,6 +32,22 @@ ARXIV_HEADER_PATTERN = re.compile(
     r"^(?:arxiv:\s*\S+(?:\s+\[[^\]]*\])?)?\s*(?:announce\s+type:\s*[\w-]+)?\s*(?:abstract:\s*)?",
     flags=re.IGNORECASE,
 )
+# 从各来源的论文标识中截取 arXiv 编号（含版本号），兼容 RSS 的 oai: 前缀与 API 的 abs 链接两种形态
+ARXIV_ID_IN_URL_PATTERN = re.compile(r"abs/(\d{4}\.\d{4,5}(?:v\d+)?)$")
+
+
+def _normalize_paper_id(raw_id: str) -> str:
+    """把 oai:arXiv.org:2611.08483v1 / http://arxiv.org/abs/2611.08483v1 统一成 2611.08483v1"""
+    if raw_id.startswith("oai:arXiv.org:"):
+        return raw_id.removeprefix("oai:arXiv.org:")
+    if match := ARXIV_ID_IN_URL_PATTERN.search(raw_id):
+        return match.group(1)
+    return raw_id
+
+
+def _paper_key(paper_id: str) -> str:
+    """去重键：剥离版本号，v1/v2 视为同一篇"""
+    return re.sub(r"v\d+$", "", paper_id)
 
 
 def _download_file(url: str, path: str) -> None:
@@ -150,7 +166,7 @@ def _parse_entry_time(struct_time: Any) -> datetime:
 
 def _entry_to_arxiv_result(entry: Any) -> ArxivResult:
     raw_id = getattr(entry, "id", "") or ""
-    paper_id = raw_id.removeprefix("oai:arXiv.org:")
+    paper_id = _normalize_paper_id(raw_id)
     title_raw = getattr(entry, "title", "") or ""
     title = " ".join(title_raw.split())
 
@@ -268,14 +284,70 @@ class ArxivRetriever(BaseRetriever):
         raw_papers = []
         for entry in target_entries:
             raw_id = getattr(entry, "id", "") or ""
-            paper_id = raw_id.removeprefix("oai:arXiv.org:")
+            paper_id = _normalize_paper_id(raw_id)
             if paper_id and paper_id in seen_paper_ids:
                 continue
             if paper_id:
                 seen_paper_ids.add(paper_id)
             raw_papers.append(_entry_to_arxiv_result(entry))
 
-        return raw_papers
+        # 跨日去重：历史日报已推送过的论文不再进入候选（避免 RSS 重复公告时重发）
+        if self.known_ids:
+            raw_papers = [
+                p for p in raw_papers
+                if _paper_key(_normalize_paper_id(p.entry_id)) not in self.known_ids
+            ]
+
+        if raw_papers:
+            return raw_papers
+
+        # RSS 只保留最近一次公告，公告空窗日（arXiv 现为周一至周四晚公告，周五起
+        # RSS 变空直到下一次公告）检索为 0 篇。此时回退 arXiv API 做"积压排空"：
+        # 取最新一批公告中历史日报尚未推送过的论文补位，保证每日产出连续且不重复
+        return self._retrieve_via_api()
+
+    # API 回退不做公告类型过滤（API 无 announce type），语义等同于 include_cross_list=true
+    def _retrieve_via_api(self) -> list[ArxivResult]:
+        categories = list(self.config.source.arxiv.category)
+        max_results = int(self.config.source.arxiv.get("fallback_max_results", 300))
+        cat_query = " OR ".join(f"cat:{c}" for c in categories)
+        # 注：不用 submittedDate 区间语法做服务端过滤——arXiv API 对该语法返回恒 0
+        # （2026-11-08 实测），且空窗日本就没有新公告，日历窗口无意义；
+        # 按提交时间倒序取最新 N 条，靠 known_ids 去重出"未推送过"的积压论文
+        params = {
+            "search_query": cat_query,
+            "start": 0,
+            "max_results": max_results,
+            "sortBy": "submittedDate",
+            "sortOrder": "descending",
+        }
+        entries: list[Any] = []
+        for attempt in range(3):
+            try:
+                response = requests.get("https://export.arxiv.org/api/query", params=params, timeout=30)
+                response.raise_for_status()
+                entries = list(feedparser.parse(response.content).entries)
+                break
+            except Exception as exc:
+                logger.warning(f"arXiv API fallback request failed (attempt {attempt + 1}/3): {exc}")
+                if attempt < 2:
+                    sleep(5)
+        else:
+            return []
+
+        papers = []
+        seen_paper_ids = set()
+        for entry in entries:
+            paper_id = _normalize_paper_id(getattr(entry, "id", "") or "")
+            if not paper_id or paper_id in seen_paper_ids:
+                continue
+            seen_paper_ids.add(paper_id)
+            if _paper_key(paper_id) in self.known_ids:
+                continue
+            papers.append(_entry_to_arxiv_result(entry))
+
+        logger.info(f"arXiv API fallback (backlog drain): {len(papers)} not-yet-shown papers")
+        return papers
 
     def convert_to_paper(self, raw_paper: ArxivResult) -> Paper:
         title = raw_paper.title
