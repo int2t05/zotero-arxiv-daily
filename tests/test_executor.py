@@ -346,3 +346,66 @@ def test_load_known_paper_ids_empty_without_dir_or_config(tmp_path):
     assert executor._load_known_paper_ids() == set()
     executor.config = OmegaConf.create({"executor": {"markdown_out_dir": None}})
     assert executor._load_known_paper_ids() == set()
+
+
+def test_refresh_today_rebuilds_only_configured_top_papers(tmp_path, monkeypatch):
+    from zotero_arxiv_daily.protocol import Paper, PaperOverview
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    digest_path = tmp_path / f"{today}.md"
+    digest_path.write_text(
+        "# Daily\n\n"
+        "## 1. First paper\n\n`相似度 4.2` ｜ Alice\n\n> First abstract.\n\n"
+        "[原文](https://arxiv.org/abs/2611.00001)\n\n"
+        "## 2. Second paper\n\n`相似度 3.8` ｜ Bob\n\n> Second abstract.\n\n"
+        "[原文](https://arxiv.org/abs/2611.00002)\n\n"
+        "## 3. Third paper\n\n`相似度 3.1` ｜ Carol\n\n> Third abstract.\n\n"
+        "[原文](https://arxiv.org/abs/2611.00003)\n",
+        encoding="utf-8",
+    )
+    executor = Executor.__new__(Executor)
+    executor.config = OmegaConf.create({
+        "executor": {"markdown_out_dir": str(tmp_path), "max_paper_num": 2},
+        "llm": {"enabled": True, "paper_overview": {"research_context": "EC x LLM"}},
+    })
+    executor.openai_client = object()
+    generated = []
+
+    def generate_overview(paper, _client, _llm_params, research_context=None):
+        generated.append((paper.title, research_context))
+        paper.overview = PaperOverview("Problem", "Method", "Evidence", "Fit")
+        return paper.overview
+
+    monkeypatch.setattr(Paper, "generate_overview", generate_overview)
+
+    executor._refresh_today_from_digest()
+
+    rebuilt = digest_path.read_text(encoding="utf-8")
+    assert generated == [("First paper", "EC x LLM"), ("Second paper", "EC x LLM")]
+    assert "共 2 篇" in rebuilt
+    assert "**研究问题**：Problem" in rebuilt
+    assert "## 3. Third paper" not in rebuilt
+
+
+def test_refresh_today_does_not_overwrite_when_overview_generation_fails(tmp_path, monkeypatch):
+    from zotero_arxiv_daily.protocol import Paper
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    digest_path = tmp_path / f"{today}.md"
+    original = (
+        "# Daily\n\n## 1. First paper\n\n`相似度 4.2` ｜ Alice\n\n"
+        "> First abstract.\n\n[原文](https://arxiv.org/abs/2611.00001)\n"
+    )
+    digest_path.write_text(original, encoding="utf-8")
+    executor = Executor.__new__(Executor)
+    executor.config = OmegaConf.create({
+        "executor": {"markdown_out_dir": str(tmp_path), "max_paper_num": 30},
+        "llm": {"enabled": True, "paper_overview": {"research_context": "EC x LLM"}},
+    })
+    executor.openai_client = object()
+    monkeypatch.setattr(Paper, "generate_overview", lambda *_args, **_kwargs: None)
+
+    with pytest.raises(RuntimeError, match="today's digest was not overwritten"):
+        executor._refresh_today_from_digest()
+
+    assert digest_path.read_text(encoding="utf-8") == original

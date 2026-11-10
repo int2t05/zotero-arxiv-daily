@@ -183,6 +183,8 @@ Then check the log and the receiver email after it finishes.
 
 By default, the main workflow runs on 22:00 UTC everyday. You can change this time by editting the workflow config `.github/workflows/main.yml`.
 
+For a same-day rebuild, manually run **Daily digest site** with `refresh_today` enabled. It reads the abstracts and paper order from today's existing `site/daily/YYYY-MM-DD.md`, regenerates overviews for up to `executor.max_paper_num` papers, and overwrites that digest only after every overview succeeds. It does not fetch from arXiv. The source abstracts are limited to the text already stored in the digest.
+
 ### Local Running
 Supported by [uv](https://github.com/astral-sh/uv), this workflow can easily run on your local device if uv is installed:
 ```bash

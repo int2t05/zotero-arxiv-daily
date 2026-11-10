@@ -54,6 +54,7 @@ executor:
   debug: false # Whether to use debug mode. Example: true
   send_empty: false # Whether to send an empty email even if no new papers today. Example: true
   max_paper_num: 30 # 每日最多输出的论文数。
+  refresh_today_from_digest: false # 从当天已存日报重建速览，不访问论文数据源。
   source: ??? # The sources of papers to retrieve. Example: ['arxiv','biorxiv','medrxiv','chemrxiv']
   reranker: local # The reranker to use. Example: 'local' or 'api'
   code_bonus: 1.15 # Score multiplier for papers with an open-source code link. Example: 1.2

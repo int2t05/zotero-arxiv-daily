@@ -6,6 +6,10 @@ on:
         description: '跳过管线, 直接用仓库已提交的 site/daily 构建发布(改站点样式/icon 时用)'
         type: boolean
         default: false
+      refresh_today:
+        description: '从当天已存日报重新生成结构化速览并覆盖（不访问 arXiv）'
+        type: boolean
+        default: false
   schedule:
     - cron: '0 22 * * *'
 
@@ -36,11 +40,16 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
           CUSTOM_CONFIG: ${{ vars.CUSTOM_CONFIG }}
+          REFRESH_TODAY: ${{ inputs.refresh_today }}
         run: |
           printf "%b\n" "$CUSTOM_CONFIG" > config/custom.yaml
           echo "Use custom config: "
           cat config/custom.yaml
-          uv run src/zotero_arxiv_daily/main.py
+          if [ "$REFRESH_TODAY" = "true" ]; then
+            uv run src/zotero_arxiv_daily/main.py executor.refresh_today_from_digest=true
+          else
+            uv run src/zotero_arxiv_daily/main.py
+          fi
 
       - name: Ensure digest file (empty-day placeholder)
         run: |

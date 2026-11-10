@@ -130,7 +130,42 @@ class Executor:
             ids.update(_ARXIV_ID_PATTERN.findall(md_file.read_text(encoding="utf-8", errors="ignore")))
         return ids
 
+    def _refresh_today_from_digest(self) -> None:
+        """依据当天已有摘要重建结构化速览并覆盖日报。"""
+        from .render_markdown import load_daily_papers, write_daily_markdown
+
+        md_dir = self.config.executor.get("markdown_out_dir", None)
+        if not md_dir:
+            raise ValueError("executor.markdown_out_dir is required to refresh today's digest")
+        digest_path = Path(md_dir) / f"{datetime.now():%Y-%m-%d}.md"
+        if not digest_path.is_file():
+            raise FileNotFoundError(f"Today's digest does not exist: {digest_path}")
+
+        papers = load_daily_papers(digest_path)
+        max_papers = int(self.config.executor.max_paper_num)
+        papers = papers[:max_papers]
+        logger.info(f"Refreshing {len(papers)} papers from {digest_path}")
+
+        if not self.config.llm.get("enabled", True):
+            raise ValueError("llm.enabled must be true to refresh structured paper overviews")
+        research_context = self._overview_research_context()
+        for paper in tqdm(papers):
+            if paper.generate_overview(
+                self.openai_client,
+                self.config.llm,
+                research_context=research_context,
+            ) is None:
+                raise RuntimeError(
+                    f"Overview generation failed for {paper.title}; today's digest was not overwritten"
+                )
+
+        write_daily_markdown(papers, md_dir)
+
     def run(self):
+        if self.config.executor.get("refresh_today_from_digest", False):
+            self._refresh_today_from_digest()
+            return
+
         corpus = self.fetch_zotero_corpus()
         corpus = self.filter_corpus(corpus)
         if len(corpus) == 0:
@@ -181,6 +216,8 @@ class Executor:
                     if consecutive_failures >= 3:
                         logger.warning("LLM 连续 3 次失败, 本次运行降级为纯摘要模式(不再调用 LLM)")
                         llm_enabled = False
+                        for paper in reranked_papers:
+                            paper.overview = None
                         continue
                 else:
                     consecutive_failures = 0
