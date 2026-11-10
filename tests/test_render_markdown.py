@@ -20,6 +20,8 @@ def test_render_markdown_shows_screening_fields_and_hides_raw_abstract_by_defaul
     assert "**方法**：The paper proposes a search method." in markdown
     assert "**结果与证据**：The evaluation compares against two baselines." in markdown
     assert "**方向关联**：The application is adjacent to refinery scheduling." in markdown
+    assert "**研究问题**：Scheduling is computationally difficult.\n\n**方法**：" in markdown
+    assert "**方法**：The paper proposes a search method.\n\n**结果与证据**：" in markdown
     assert "<summary>原始摘要</summary>" in markdown
     assert "**代码复现线索**" not in markdown
     assert "TL;DR" not in markdown

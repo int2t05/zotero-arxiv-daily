@@ -41,15 +41,17 @@ def render_markdown(papers) -> str:
         lines.append(f"`相似度 {score}` ｜ {metadata}")
         lines.append("")
         if p.overview:
-            lines.extend([
+            overview_lines = [
                 f"**研究问题**：{_escape_markdown(_one_line(p.overview.research_problem))}",
                 f"**方法**：{_escape_markdown(_one_line(p.overview.method))}",
                 f"**结果与证据**：{_escape_markdown(_one_line(p.overview.evidence))}",
                 f"**方向关联**：{_escape_markdown(_one_line(p.overview.interest_fit))}",
-            ])
+            ]
             if p.code_url:
                 note = p.overview.reproduction_notes or "论文文本未提供复现细节；需打开代码仓库核对。"
-                lines.append(f"**代码复现线索**：{_escape_markdown(_one_line(note))}")
+                overview_lines.append(f"**代码复现线索**：{_escape_markdown(_one_line(note))}")
+            for line in overview_lines:
+                lines.extend([line, ""])
             lines.append("")
         else:
             lines.extend(["**论文速览**：暂未生成，请参考原始摘要和原文。", ""])
