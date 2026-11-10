@@ -6,7 +6,7 @@ zotero:
 
 source:
   arxiv:
-    category: null # The categories of target arxiv papers. Find the abbr of your research area from [here](https://arxiv.org/category_taxonomy). Example: ["cs.AI","cs.CV","cs.LG","cs.CL"]
+    category: null # The arXiv categories to retrieve. See https://arxiv.org/category_taxonomy.
     include_cross_list: false # Whether to include arXiv cross-list papers in subscribed categories. Example: true
     fallback_max_results: 300 # Max papers fetched per arXiv API fallback query (sorted by submittedDate desc) when the RSS feed has no new entries. Example: 300
   biorxiv:
@@ -33,7 +33,9 @@ llm:
   # Arguments for the selected LLM API.
     max_tokens: 16384
     model: ???
-  language: English # Preferred language for the TL;DR. Example: English
+  language: English # 速览内容的输出语言。
+  paper_overview:
+    research_context: null # 用自然语言说明研究方向，供速览判断主题关联。
 
 reranker:
   local:
@@ -51,7 +53,7 @@ reranker:
 executor:
   debug: false # Whether to use debug mode. Example: true
   send_empty: false # Whether to send an empty email even if no new papers today. Example: true
-  max_paper_num: 100 # The maximum number of the papers presented in the email. Example: 100
+  max_paper_num: 30 # 每日最多输出的论文数。
   source: ??? # The sources of papers to retrieve. Example: ['arxiv','biorxiv','medrxiv','chemrxiv']
   reranker: local # The reranker to use. Example: 'local' or 'api'
   code_bonus: 1.15 # Score multiplier for papers with an open-source code link. Example: 1.2

@@ -12,7 +12,13 @@ from zotero_arxiv_daily.protocol import CorpusPaper, Paper
 
 _AFFILIATION_MARKER = "You are an assistant who perfectly extracts affiliations"
 _AFFILIATION_RESPONSE = '["TsingHua University","Peking University"]'
-_TLDR_RESPONSE = "Hello! How can I assist you today?"
+_OVERVIEW_RESPONSE = (
+    '{"research_problem":"The problem is stated.",'
+    '"method":"A method is proposed.",'
+    '"evidence":"The abstract reports an evaluation.",'
+    '"interest_fit":"The method is adjacent to the selected research context.",'
+    '"reproduction_notes":"The paper text describes a dataset; inspect the repository for run steps."}'
+)
 
 
 def _make_chat_response(content: str) -> SimpleNamespace:
@@ -36,12 +42,12 @@ def _stub_chat_create(**kwargs):
     request_str = str(messages)
     if _AFFILIATION_MARKER in request_str:
         return _make_chat_response(_AFFILIATION_RESPONSE)
-    return _make_chat_response(_TLDR_RESPONSE)
+    return _make_chat_response(_OVERVIEW_RESPONSE)
 
 
 def _stub_response_create(**kwargs):
     request_str = str(kwargs.get("input", []))
-    content = _AFFILIATION_RESPONSE if _AFFILIATION_MARKER in request_str else _TLDR_RESPONSE
+    content = _AFFILIATION_RESPONSE if _AFFILIATION_MARKER in request_str else _OVERVIEW_RESPONSE
     return SimpleNamespace(output_text=content)
 
 
@@ -180,7 +186,7 @@ def make_sample_paper(**overrides) -> Paper:
         url="https://arxiv.org/abs/2026.00001",
         pdf_url="https://arxiv.org/pdf/2026.00001",
         full_text="\\begin{document} Some text. \\end{document}",
-        tldr=None,
+        overview=None,
         affiliations=None,
         score=None,
     )

@@ -46,6 +46,22 @@ class Executor:
         # timeout/max_retries 显式收紧, 避免端点异常时单请求挂 10 分钟
         self.openai_client = OpenAI(api_key=config.llm.api.key, base_url=config.llm.api.base_url,
                                     timeout=60, max_retries=2)
+
+    def _overview_research_context(self) -> str:
+        """优先使用明确方向描述，否则从画像集合名和 arXiv 分类构造提示。"""
+        overview_config = self.config.llm.get("paper_overview", {}) or {}
+        if research_context := overview_config.get("research_context"):
+            return str(research_context)
+
+        context_parts = []
+        if self.include_path_patterns:
+            collections = [pattern.removesuffix("/**") for pattern in self.include_path_patterns]
+            context_parts.append("Zotero research collections: " + ", ".join(collections))
+        categories = self.config.source.arxiv.get("category")
+        if categories:
+            context_parts.append("Selected arXiv categories: " + ", ".join(str(value) for value in categories))
+        return "; ".join(context_parts)
+
     def fetch_zotero_corpus(self) -> list[CorpusPaper]:
         logger.info("Fetching zotero corpus")
         zot = zotero.Zotero(self.config.zotero.user_id, 'user', self.config.zotero.api_key)
@@ -142,16 +158,20 @@ class Executor:
                         p.score = (p.score or 0.0) * code_bonus
                 reranked_papers.sort(key=lambda x: x.score or 0.0, reverse=True)
             reranked_papers = reranked_papers[:self.config.executor.max_paper_num]
-            logger.info("Generating TLDR and affiliations...")
-            # LLM 降级路线: llm.enabled=false 直接跳过; 连续 3 次失败熔断为纯摘要模式
+            logger.info("Generating paper overviews and affiliations...")
+            # LLM 关闭或连续失败时保留原始摘要，避免生成未经核验的速览。
             llm_enabled = self.config.llm.get("enabled", True)
+            research_context = self._overview_research_context()
             consecutive_failures = 0
             for p in tqdm(reranked_papers):
                 if not llm_enabled:
-                    p.tldr = p.abstract
                     continue
-                p.generate_tldr(self.openai_client, self.config.llm)
-                failed = (not p.tldr) or p.tldr == p.abstract or p.tldr.startswith("Failed to generate TLDR")
+                overview = p.generate_overview(
+                    self.openai_client,
+                    self.config.llm,
+                    research_context=research_context,
+                )
+                failed = overview is None
                 if failed:
                     consecutive_failures += 1
                     if consecutive_failures >= 3:

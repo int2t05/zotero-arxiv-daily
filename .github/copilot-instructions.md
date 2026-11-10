@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Zotero-arXiv-Daily recommends new arXiv/bioRxiv/medRxiv papers based on a user's Zotero library. It computes embedding similarity between new papers and the user's existing library, generates TLDRs via LLM, and delivers results by email. Designed to run as a GitHub Actions workflow at zero cost.
+Zotero-arXiv-Daily recommends new arXiv/bioRxiv/medRxiv papers based on a user's Zotero library. It computes embedding similarity between new papers and the user's selected library collections, generates structured screening overviews via LLM, and delivers results by email or a Markdown site. Designed to run as a GitHub Actions workflow.
 
 ## Commands
 
@@ -33,7 +33,7 @@ The app is a linear pipeline orchestrated by `Executor` (`src/zotero_arxiv_daily
 2. **Filter corpus** → `include_path` / `ignore_path` glob patterns
 3. **Retrieve new papers** → from configured sources (arXiv RSS, bioRxiv/medRxiv REST API)
 4. **Rerank** → weighted embedding similarity to corpus (newer Zotero papers weighted higher)
-5. **Generate TLDRs + affiliations** → OpenAI-compatible LLM API
+5. **Generate paper overviews + affiliations** → OpenAI-compatible LLM API
 6. **Render + send email** → HTML email via SMTP
 
 ### Plugin Systems
@@ -50,7 +50,7 @@ Uses Hydra + OmegaConf. Config composes from `config/base.yaml` (defaults with `
 
 ### Data Classes
 
-`Paper` and `CorpusPaper` in `src/zotero_arxiv_daily/protocol.py`. `Paper` has LLM-powered methods (`generate_tldr`, `generate_affiliations`) that call the OpenAI API directly with `tiktoken`-based token truncation.
+`Paper`, `PaperOverview`, and `CorpusPaper` in `src/zotero_arxiv_daily/protocol.py`. `Paper.generate_overview` returns structured problem, method, evidence, and interest-fit fields from the abstract; code-linked papers may also get reproduction notes from available paper text. `Paper.generate_affiliations` extracts affiliations. LLM prompts use `tiktoken`-based token truncation.
 
 ## Testing Conventions
 

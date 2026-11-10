@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Zotero-arXiv-Daily recommends new arXiv/bioRxiv/medRxiv/chemRxiv papers based on a user's Zotero library. It computes embedding similarity between new papers and the user's existing library, generates TLDRs via LLM, and delivers results by email. Designed to run as a GitHub Actions workflow at zero cost.
+Zotero-arXiv-Daily recommends new arXiv/bioRxiv/medRxiv/chemRxiv papers based on a user's Zotero library. It computes embedding similarity between new papers and the user's selected library collections, generates structured paper-screening overviews via LLM, and delivers results by email or Markdown site. Designed to run as a GitHub Actions workflow.
 
 ## Commands
 
@@ -35,8 +35,8 @@ The app follows a linear pipeline orchestrated by `Executor` (`src/zotero_arxiv_
 2. **Filter corpus** — applies `include_path` glob patterns to select relevant collections
 3. **Retrieve new papers** — fetches from configured sources (arXiv RSS, bioRxiv/medRxiv REST API, chemRxiv via Crossref REST API)
 4. **Rerank** — scores candidates by weighted similarity to corpus (newer Zotero papers weighted higher)
-5. **Generate TLDRs + affiliations** — via OpenAI-compatible LLM API
-6. **Render + send email** — HTML email via SMTP
+5. **Generate paper overviews + affiliations** — problem, method, evidence, and fit from the abstract; code-linked papers may get additional reproduction clues
+6. **Render + deliver** — HTML email via SMTP or a Markdown daily digest
 
 ### Plugin Systems
 
@@ -50,7 +50,7 @@ Uses Hydra + OmegaConf. Config is composed from `config/base.yaml` (defaults) + 
 
 ### Data Classes
 
-`Paper` and `CorpusPaper` in `src/zotero_arxiv_daily/protocol.py`. `Paper` has LLM-powered methods (`generate_tldr`, `generate_affiliations`) that call the OpenAI API directly.
+`Paper`, `PaperOverview`, and `CorpusPaper` in `src/zotero_arxiv_daily/protocol.py`. `Paper.generate_overview` returns structured screening fields from the abstract; code-linked papers may also get reproduction clues from available paper text. `Paper.generate_affiliations` extracts author affiliations.
 
 ## Testing
 

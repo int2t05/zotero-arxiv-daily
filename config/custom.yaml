@@ -1,7 +1,8 @@
 zotero:
   user_id: ${oc.env:ZOTERO_ID}
   api_key: ${oc.env:ZOTERO_KEY}
-  include_path: null # Or set a list of glob patterns, e.g. ["2026/survey/**","2026/reading-group/**"]
+  include_path:
+    - "直博入门 EC×LLM×炼化调度/**"
 
 email:
   sender: ${oc.env:SENDER}
@@ -16,12 +17,22 @@ llm:
     base_url: ${oc.env:OPENAI_API_BASE}
   api_mode: chat_completion
   generation_kwargs:
-    model: gpt-4o-mini
+    model: glm-5.3-flash
+    temperature: 0.4
+  language: Chinese
+  paper_overview:
+    research_context: >-
+      当前主线是科研素养与研究方法；方向基础为进化计算/群智算法与 LLM/API 两条并列支线，LLM 与进化计算的交互值得重点关注。
+      分布式多智能体进化计算是辅助阅读方向；炼化调度、双网与 Petri 网仅作背景，不代表已确认的课题或技术方案。
 
 source:
   arxiv:
-    category: ["cs.AI","cs.CV","cs.LG","cs.CL"]
+    category: ["cs.NE", "cs.MA", "cs.LG", "cs.AI", "math.OC"]
+    include_cross_list: true
 
 executor:
   debug: ${oc.env:DEBUG,null}
-  source: ['arxiv']
+  source: ["arxiv"]
+  max_paper_num: 30
+  send_email: false
+  markdown_out_dir: site/daily

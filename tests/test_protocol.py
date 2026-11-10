@@ -1,4 +1,4 @@
-"""Tests for zotero_arxiv_daily.protocol: Paper.generate_tldr, Paper.generate_affiliations."""
+"""Tests for paper overviews and author affiliations."""
 
 import pytest
 
@@ -11,32 +11,77 @@ def llm_params():
         "api_mode": "chat_completion",
         "language": "English",
         "generation_kwargs": {"model": "gpt-4o-mini", "max_tokens": 16384},
+        "paper_overview": {"research_context": "evolutionary computation and scheduling"},
     }
 
 
 # ---------------------------------------------------------------------------
-# generate_tldr
+# generate_overview
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("api_mode", ["chat_completion", "response"])
-def test_tldr_returns_response(llm_params, api_mode):
+def test_overview_returns_structured_fields(llm_params, api_mode):
     llm_params["api_mode"] = api_mode
     client = make_stub_openai_client()
     paper = make_sample_paper()
-    result = paper.generate_tldr(client, llm_params)
-    assert result == "Hello! How can I assist you today?"
-    assert paper.tldr == result
+    result = paper.generate_overview(client, llm_params)
+    assert result is not None
+    assert result.research_problem == "The problem is stated."
+    assert result.method == "A method is proposed."
+    assert result.evidence == "The abstract reports an evaluation."
+    assert result.interest_fit == "The method is adjacent to the selected research context."
+    assert result.reproduction_notes is None
+    assert paper.overview == result
 
 
-def test_tldr_without_abstract_or_fulltext(llm_params):
+def test_overview_omits_reproduction_notes_without_code_link(llm_params):
+    paper = make_sample_paper(code_url=None)
+    result = paper.generate_overview(make_stub_openai_client(), llm_params)
+    assert result is not None
+    assert result.reproduction_notes is None
+
+
+def test_overview_uses_abstract_only_without_code_link(llm_params):
+    from types import SimpleNamespace
+
+    captured = {}
+
+    def create_chat_completion(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=(
+                '{"research_problem":"Problem.","method":"Method.",'
+                '"evidence":"Evidence.","interest_fit":"Relevant."}'
+            )))]
+        )
+
+    paper = make_sample_paper(full_text="Full text should be reserved for code-linked papers.")
+    client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create_chat_completion)))
+    paper.generate_overview(client, llm_params)
+
+    prompt = str(captured["messages"])
+    assert "Paper abstract" in prompt
+    assert "Full text should be reserved" not in prompt
+    assert "Available paper text for code-related notes" not in prompt
+
+
+def test_overview_includes_reproduction_notes_for_code_link(llm_params):
+    paper = make_sample_paper(code_url="https://github.com/example/paper")
+    result = paper.generate_overview(make_stub_openai_client(), llm_params)
+    assert result is not None
+    assert result.reproduction_notes == "The paper text describes a dataset; inspect the repository for run steps."
+
+
+def test_overview_requires_abstract(llm_params):
     client = make_stub_openai_client()
     paper = make_sample_paper(abstract="", full_text=None)
-    result = paper.generate_tldr(client, llm_params)
-    assert "Failed to generate TLDR" in result
+    result = paper.generate_overview(client, llm_params)
+    assert result is None
+    assert paper.overview is None
 
 
-def test_tldr_falls_back_to_abstract_on_error(llm_params):
+def test_overview_returns_none_on_llm_error(llm_params):
     paper = make_sample_paper()
 
     # Client whose create() raises
@@ -47,14 +92,15 @@ def test_tldr_falls_back_to_abstract_on_error(llm_params):
             completions=SimpleNamespace(create=lambda **kw: (_ for _ in ()).throw(RuntimeError("API down")))
         )
     )
-    result = paper.generate_tldr(broken_client, llm_params)
-    assert result == paper.abstract
+    result = paper.generate_overview(broken_client, llm_params)
+    assert result is None
+    assert paper.overview is None
 
 
-def test_tldr_truncates_long_prompt(llm_params):
+def test_overview_truncates_code_linked_full_text(llm_params):
     client = make_stub_openai_client()
-    paper = make_sample_paper(full_text="word " * 10000)
-    result = paper.generate_tldr(client, llm_params)
+    paper = make_sample_paper(full_text="word " * 10000, code_url="https://github.com/example/paper")
+    result = paper.generate_overview(client, llm_params)
     assert result is not None
 
 
@@ -65,7 +111,12 @@ def test_response_mode_maps_max_tokens(llm_params):
 
     def create_response(**kwargs):
         received_kwargs.update(kwargs)
-        return SimpleNamespace(output_text="Summary")
+        return SimpleNamespace(
+            output_text=(
+                '{"research_problem":"Problem.","method":"Method.",'
+                '"evidence":"Evidence.","interest_fit":"Relevant."}'
+            )
+        )
 
     client = SimpleNamespace(
         responses=SimpleNamespace(create=create_response),
@@ -73,16 +124,16 @@ def test_response_mode_maps_max_tokens(llm_params):
     llm_params["api_mode"] = "response"
     paper = make_sample_paper()
 
-    assert paper.generate_tldr(client, llm_params) == "Summary"
+    assert paper.generate_overview(client, llm_params).method == "Method."
     assert received_kwargs["max_output_tokens"] == 16384
     assert "max_tokens" not in received_kwargs
 
 
-def test_invalid_api_mode_falls_back_to_abstract(llm_params):
+def test_invalid_api_mode_returns_none(llm_params):
     llm_params["api_mode"] = "invalid"
     paper = make_sample_paper()
 
-    assert paper.generate_tldr(make_stub_openai_client(), llm_params) == paper.abstract
+    assert paper.generate_overview(make_stub_openai_client(), llm_params) is None
 
 
 # ---------------------------------------------------------------------------

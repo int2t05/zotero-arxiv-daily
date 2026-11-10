@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
-"""每日精选导出为 Markdown（供 VitePress 站点渲染），替代邮件输出"""
-import re
+"""将结构化论文速览导出为 Markdown，供 VitePress 站点使用。"""
 from datetime import datetime
 from loguru import logger
 
 
+def _one_line(value: str) -> str:
+    """将速览字段压成单行，避免模型换行破坏日报结构。"""
+    return " ".join(value.split())
+
+
 def render_markdown(papers) -> str:
-    """把排序后的 Paper 列表渲染成单日 Markdown"""
+    """把排序后的论文渲染成便于初筛的单日 Markdown。"""
     lines = [
         f"# 每日 arXiv 精选 · {datetime.now():%Y-%m-%d}",
         "",
-        f"> 共 {len(papers)} 篇，按与你 Zotero 兴趣画像的相似度排序；TL;DR 由 LLM 生成，仅供快速筛选。",
+        f"> 共 {len(papers)} 篇，按 Zotero 兴趣画像相似度排序。速览依据论文摘要生成；代码线索未经运行验证。",
         "",
     ]
     for i, p in enumerate(papers, 1):
@@ -21,19 +25,29 @@ def render_markdown(papers) -> str:
         lines.append("")
         lines.append(f"`相似度 {score}` ｜ {authors}{aff}")
         lines.append("")
-        if p.tldr:
-            tldr = re.sub(r"^\*{0,2}\s*TL;?DR\s*[:：]?\*{0,2}\s*", "", p.tldr.strip())
-            lines.append(f"**TL;DR**：{tldr}")
+        if p.overview:
+            lines.extend([
+                f"**研究问题**：{_one_line(p.overview.research_problem)}",
+                f"**方法**：{_one_line(p.overview.method)}",
+                f"**结果与证据**：{_one_line(p.overview.evidence)}",
+                f"**方向关联**：{_one_line(p.overview.interest_fit)}",
+            ])
+            if p.code_url:
+                note = p.overview.reproduction_notes or "论文文本未提供复现细节；需打开代码仓库核对。"
+                lines.append(f"**代码复现线索**：{_one_line(note)}")
             lines.append("")
+        else:
+            lines.extend(["**论文速览**：暂未生成，请参考原始摘要和原文。", ""])
         snippet = (p.abstract or "").strip()
         if snippet:
-            lines.append(f"> {snippet[:500]}{'…' if len(snippet) > 500 else ''}")
-            lines.append("")
+            lines.extend(["<details>", "<summary>原始摘要</summary>", ""])
+            lines.extend(f"> {line}" for line in snippet.splitlines())
+            lines.extend(["", "</details>", ""])
         link = f"[原文]({p.url})"
         if p.pdf_url:
             link += f" ｜ [PDF]({p.pdf_url})"
         if p.code_url:
-            link += f" ｜ [代码]({p.code_url})"
+            link += f" ｜ [代码线索（未验证）]({p.code_url})"
         lines.append(link)
         lines.append("")
     return "\n".join(lines)

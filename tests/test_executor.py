@@ -57,6 +57,30 @@ def _make_executor(include_patterns=None, ignore_patterns=None):
     return executor
 
 
+def test_overview_research_context_uses_collection_and_categories(config):
+    from omegaconf import open_dict
+
+    with open_dict(config):
+        config.zotero.include_path = ["EC x LLM x scheduling/**"]
+        config.llm.paper_overview.research_context = None
+
+    executor = Executor(config)
+    context = executor._overview_research_context()
+
+    assert "EC x LLM x scheduling" in context
+    assert "cs.AI" in context
+
+
+def test_overview_research_context_prefers_explicit_profile(config):
+    from omegaconf import open_dict
+
+    with open_dict(config):
+        config.llm.paper_overview.research_context = "EC and LLM/API"
+
+    executor = Executor(config)
+    assert executor._overview_research_context() == "EC and LLM/API"
+
+
 def test_filter_corpus_matches_any_path_against_any_pattern():
     executor = _make_executor(include_patterns=["2026/survey/**", "2026/reading-group/**"])
     corpus = [
@@ -149,7 +173,7 @@ def test_fetch_zotero_corpus_paper_with_zero_collections(config, monkeypatch):
 
 
 def test_run_end_to_end(config, monkeypatch):
-    """Full pipeline: Zotero fetch -> filter -> retrieve -> rerank -> TLDR -> email."""
+    """Full pipeline: Zotero fetch -> filter -> retrieve -> rerank -> overview -> email."""
     import smtplib
 
     from omegaconf import open_dict
@@ -172,7 +196,7 @@ def test_run_end_to_end(config, monkeypatch):
     stub_zot = make_stub_zotero_client()
     monkeypatch.setattr("zotero_arxiv_daily.executor.zotero.Zotero", lambda *a, **kw: stub_zot)
 
-    # 2. Stub OpenAI (for reranker + TLDR/affiliations)
+    # 2. Stub OpenAI (for reranking, overviews, and affiliations)
     stub_client = make_stub_openai_client()
     monkeypatch.setattr("zotero_arxiv_daily.executor.OpenAI", lambda **kw: stub_client)
     monkeypatch.setattr("zotero_arxiv_daily.reranker.api.OpenAI", lambda **kw: stub_client)
