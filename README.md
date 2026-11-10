@@ -39,7 +39,7 @@
 - Links of PDF and code implementation (if any) presented in the e-mail.
 - List of papers sorted by relevance with your recent research interest.
 - Fast deployment via fork this repo and set environment variables in the Github Action Page.
-- Daily output is limited to 30 papers by default for manageable screening.
+- Daily output is limited to 100 papers by default.
 - Ignore unwanted Zotero papers using a list of glob patterns.
 - Support multiple sources of papers to retrieve:
   - arxiv
@@ -106,13 +106,13 @@ source:
 executor:
   debug: ${oc.env:DEBUG,null}
   source: ['arxiv']
-  max_paper_num: 30
+  max_paper_num: 100
 ```
 Set `source.arxiv.include_cross_list: false` to restrict retrieval to papers whose primary category matches.
 >[!NOTE]
 > `${oc.env:XXX,yyy}` means the value of the environment variable `XXX`. If the variable is not set, the default value `yyy` will be used.
 
-GitHub Actions writes the repository variable `CUSTOM_CONFIG` over `config/custom.yaml` at runtime. Keep `executor.max_paper_num: 30` and any `llm.paper_overview.research_context` you want in that variable as well as in the local config file.
+GitHub Actions writes the repository variable `CUSTOM_CONFIG` over `config/custom.yaml` at runtime. Keep `executor.max_paper_num: 100` and any `llm.paper_overview.research_context` you want in that variable as well as in the local config file.
 
 Here is the full configuration, `???` means the value must be filled in:
 ```yaml
@@ -168,7 +168,7 @@ reranker:
 executor:
   debug: false # Whether to use debug mode. Example: true
   send_empty: false # Whether to send an empty email even if no new papers today. Example: true
-  max_paper_num: 30 # The maximum number of papers in each daily digest.
+  max_paper_num: 100 # The maximum number of papers in each daily digest.
   source: ??? # The sources of papers to retrieve. Example: ['arxiv','biorxiv','medrxiv','chemrxiv']
   reranker: local # The reranker to use. Example: 'local' or 'api'
 ```
@@ -206,7 +206,7 @@ This project is in active development. You can subscribe this repo via `Watch` s
 
 ## 📌 Limitations
 - The recommendation algorithm is very simple, it may not accurately reflect your interest. Welcome better ideas for improving the algorithm!
-- Raising `max_paper_num` increases LLM calls and processing time. The default of 30 keeps the daily digest focused; adjust it to match your screening time and Actions quota.
+- Raising `max_paper_num` increases LLM calls and processing time. The default of 100 provides a broader daily selection; lower it to match your screening time and Actions quota.
 
 
 ## 📃 License

@@ -33,6 +33,6 @@ source:
 executor:
   debug: ${oc.env:DEBUG,null}
   source: ["arxiv"]
-  max_paper_num: 30
+  max_paper_num: 100
   send_email: false
   markdown_out_dir: site/daily
