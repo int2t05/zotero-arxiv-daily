@@ -70,7 +70,7 @@ def test_overview_includes_reproduction_notes_for_code_link(llm_params):
     paper = make_sample_paper(code_url="https://github.com/example/paper")
     result = paper.generate_overview(make_stub_openai_client(), llm_params)
     assert result is not None
-    assert result.reproduction_notes == "The paper text describes a dataset; inspect the repository for run steps."
+    assert result.reproduction_notes == "The paper text describes the dataset."
 
 
 def test_overview_requires_abstract(llm_params):

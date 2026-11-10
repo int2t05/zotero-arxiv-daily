@@ -56,7 +56,7 @@ def get_empty_html():
   return block_template
 
 def _overview_html(overview: PaperOverview | None, has_code_link: bool) -> str:
-    """渲染论文速览；仅对检测到代码链接的论文显示复现线索。"""
+    """渲染论文速览；复现线索仅在论文文本明确提供时显示。"""
     if overview is None:
         return "<p><strong>论文速览：</strong>暂未生成，请查看原始摘要和原文。</p>"
 
@@ -66,9 +66,8 @@ def _overview_html(overview: PaperOverview | None, has_code_link: bool) -> str:
         ("结果与证据", overview.evidence),
         ("方向关联", overview.interest_fit),
     ]
-    if has_code_link:
-        note = overview.reproduction_notes or "论文文本未提供复现细节；需打开代码仓库核对。"
-        fields.append(("代码复现线索", note))
+    if has_code_link and overview.reproduction_notes:
+        fields.append(("代码复现线索", overview.reproduction_notes))
     return "".join(
         f"<p><strong>{html.escape(label)}：</strong>{html.escape(' '.join(value.split()))}</p>"
         for label, value in fields

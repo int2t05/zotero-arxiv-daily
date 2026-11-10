@@ -17,7 +17,7 @@ _OVERVIEW_RESPONSE = (
     '"method":"A method is proposed.",'
     '"evidence":"The abstract reports an evaluation.",'
     '"interest_fit":"The method is adjacent to the selected research context.",'
-    '"reproduction_notes":"The paper text describes a dataset; inspect the repository for run steps."}'
+    '"reproduction_notes":"The paper text describes the dataset."}'
 )
 
 

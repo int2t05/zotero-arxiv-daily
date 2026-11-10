@@ -27,7 +27,7 @@ def render_markdown(papers) -> str:
     lines = [
         f"# 每日 arXiv 精选 · {datetime.now():%Y-%m-%d}",
         "",
-        f"> 共 {len(papers)} 篇，按 Zotero 兴趣画像相似度排序。速览依据论文摘要生成；代码仓库链接取自论文，复现信息仅依据论文文本。",
+        f"> 共 {len(papers)} 篇，按 Zotero 兴趣画像相似度排序。速览依据论文摘要生成；仅在论文文本明确提供复现细节时显示，代码仓库链接取自论文。",
         "",
     ]
     for i, p in enumerate(papers, 1):
@@ -47,9 +47,10 @@ def render_markdown(papers) -> str:
                 f"**结果与证据**：{_escape_markdown(_one_line(p.overview.evidence))}",
                 f"**方向关联**：{_escape_markdown(_one_line(p.overview.interest_fit))}",
             ]
-            if p.code_url:
-                note = p.overview.reproduction_notes or "论文文本未提供复现细节；需打开代码仓库核对。"
-                overview_lines.append(f"**代码复现线索**：{_escape_markdown(_one_line(note))}")
+            if p.code_url and p.overview.reproduction_notes:
+                overview_lines.append(
+                    f"**代码复现线索**：{_escape_markdown(_one_line(p.overview.reproduction_notes))}"
+                )
             for line in overview_lines:
                 lines.extend([line, ""])
             lines.append("")
