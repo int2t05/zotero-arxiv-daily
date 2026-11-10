@@ -27,7 +27,7 @@ def render_markdown(papers) -> str:
     lines = [
         f"# 每日 arXiv 精选 · {datetime.now():%Y-%m-%d}",
         "",
-        f"> 共 {len(papers)} 篇，按 Zotero 兴趣画像相似度排序。速览依据论文摘要生成；代码线索未经运行验证。",
+        f"> 共 {len(papers)} 篇，按 Zotero 兴趣画像相似度排序。速览依据论文摘要生成；代码仓库链接取自论文，复现信息仅依据论文文本。",
         "",
     ]
     for i, p in enumerate(papers, 1):
@@ -64,7 +64,7 @@ def render_markdown(papers) -> str:
         if p.pdf_url:
             link += f" ｜ [PDF]({p.pdf_url})"
         if p.code_url:
-            link += f" ｜ [代码线索（未验证）]({p.code_url})"
+            link += f" ｜ [代码仓库]({p.code_url})"
         lines.append(link)
         lines.append("")
     return "\n".join(lines)

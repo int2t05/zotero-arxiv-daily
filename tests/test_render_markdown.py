@@ -43,7 +43,7 @@ def test_render_markdown_shows_reproduction_note_only_with_code_link():
     markdown = render_markdown([paper])
 
     assert "**代码复现线索**：The abstract names the benchmark; check the repository for setup steps." in markdown
-    assert "[代码线索（未验证）](https://github.com/example/paper)" in markdown
+    assert "[代码仓库](https://github.com/example/paper)" in markdown
 
 
 def test_render_markdown_escapes_markdown_in_paper_text():

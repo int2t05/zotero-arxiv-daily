@@ -27,7 +27,7 @@ def test_render_email_with_papers():
     assert "Sample Paper Title" in html
     assert "The problem is stated." in html
     assert "The paper describes a dataset." in html
-    assert "代码线索（未验证）" in html
+    assert "代码仓库" in html
     assert "MIT" in html
 
 

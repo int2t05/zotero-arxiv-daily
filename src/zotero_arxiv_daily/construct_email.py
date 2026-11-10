@@ -93,7 +93,7 @@ def get_block_html(
         )
     if code_url:
         links.append(
-            f'<a href="{html.escape(code_url, quote=True)}" style="display:inline-block;text-decoration:none;font-size:14px;font-weight:bold;color:#fff;background:#555;padding:8px 16px;border-radius:4px;">代码线索（未验证）</a>'
+            f'<a href="{html.escape(code_url, quote=True)}" style="display:inline-block;text-decoration:none;font-size:14px;font-weight:bold;color:#fff;background:#555;padding:8px 16px;border-radius:4px;">代码仓库</a>'
         )
     block_template = """
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-family: Arial, sans-serif; border: 1px solid #ddd; border-radius: 8px; padding: 16px; background-color: #f9f9f9;">
