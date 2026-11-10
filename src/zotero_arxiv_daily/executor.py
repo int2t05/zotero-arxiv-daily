@@ -114,7 +114,7 @@ class Executor:
 
     
     def _load_known_paper_ids(self) -> set[str]:
-        """从历史日报提取已推送的 arXiv 论文 ID，供检索层跨日去重（每篇论文全站只出现一次）"""
+        """从往期日报提取已推送 ID；跳过当天文件以支持重跑覆盖。"""
         md_dir = self.config.executor.get("markdown_out_dir", None)
         if not md_dir:
             return set()
@@ -122,7 +122,11 @@ class Executor:
         if not root.is_dir():
             return set()
         ids: set[str] = set()
+        today = datetime.now().strftime("%Y-%m-%d")
         for md_file in root.glob("*.md"):
+            # 当天日报可能正被重跑覆盖，不能把它自己的论文提前去重掉。
+            if md_file.stem == today:
+                continue
             ids.update(_ARXIV_ID_PATTERN.findall(md_file.read_text(encoding="utf-8", errors="ignore")))
         return ids
 

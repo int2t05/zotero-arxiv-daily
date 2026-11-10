@@ -1,6 +1,6 @@
 """Tests for zotero_arxiv_daily.executor: normalize_path_patterns, filter_corpus, fetch_zotero_corpus, E2E."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from omegaconf import OmegaConf
@@ -323,6 +323,21 @@ def test_load_known_paper_ids_extracts_ids_from_digests(tmp_path):
         encoding="utf-8",
     )
     assert executor._load_known_paper_ids() == {"2609.22090", "2611.08483"}
+
+
+def test_load_known_paper_ids_skips_today_digest_for_reruns(tmp_path):
+    executor = Executor.__new__(Executor)
+    executor.config = OmegaConf.create({"executor": {"markdown_out_dir": str(tmp_path)}})
+    today = datetime.now().strftime("%Y-%m-%d")
+    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    (tmp_path / f"{yesterday}.md").write_text(
+        "[原文](https://arxiv.org/abs/2609.22090)\n", encoding="utf-8"
+    )
+    (tmp_path / f"{today}.md").write_text(
+        "[原文](https://arxiv.org/abs/2611.08483)\n", encoding="utf-8"
+    )
+
+    assert executor._load_known_paper_ids() == {"2609.22090"}
 
 
 def test_load_known_paper_ids_empty_without_dir_or_config(tmp_path):
