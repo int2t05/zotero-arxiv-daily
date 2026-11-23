@@ -22,13 +22,15 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           repository: ${{ vars.REPOSITORY }}
           ref: ${{ vars.REF }}
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.7"
 
       - name: Run script
         env:
@@ -65,10 +67,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # CI 覆写了被跟踪的 config/custom.yaml，先还原避免脏树阻断 pull --rebase（并发推送保护）
-          git restore config/custom.yaml 2>/dev/null || true
+          git restore config/custom.yaml
           git add site/daily
           git diff --cached --quiet || git commit -m "daily digest $(date -u +%F)"
-          git pull --rebase origin main || true
+          git pull --rebase origin main
           git push
 
   # 阶段二: VitePress 构建 + Pages 发布(改样式/icon 可用 deploy_only 只跑本段)
@@ -87,7 +89,7 @@ jobs:
       cancel-in-progress: false
     steps:
       - name: Checkout latest main
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           ref: main   # digest 已把每日 MD 推上 main; workflow_dispatch 默认 SHA 是触发时的旧提交, 必须显式取 main
 
@@ -105,7 +107,7 @@ jobs:
           } > site/index.md
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
 
@@ -115,10 +117,10 @@ jobs:
           npx vitepress build site
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: site/.vitepress/dist
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5.0.1

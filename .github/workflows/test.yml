@@ -7,13 +7,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       #  with:
       #    repository: ${{ vars.REPOSITORY }}
       #    ref: ${{ vars.REF }}
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v7.1.4
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.7"
 
 
       - name: Run script
