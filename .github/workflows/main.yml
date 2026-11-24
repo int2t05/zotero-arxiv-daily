@@ -11,7 +11,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: '0 22 * * *'
+    - cron: '17 22 * * *'
 
 jobs:
   # 阶段一: 跑管线生成每日 MD 并提交(耗时长; 失败只影响本段)
@@ -73,25 +73,18 @@ jobs:
           git pull --rebase origin main
           git push
 
-  # 阶段二: VitePress 构建 + Pages 发布(改样式/icon 可用 deploy_only 只跑本段)
-  deploy:
+  # 阶段二：VitePress 构建并上传 Pages artifact
+  build:
     needs: digest
     if: ${{ !cancelled() && (needs.digest.result == 'success' || inputs.deploy_only == true) }}
     runs-on: ubuntu-latest
     permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: pages
-      cancel-in-progress: false
+      contents: read
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v7.0.1
         with:
-          ref: main   # digest 已把每日 MD 推上 main; workflow_dispatch 默认 SHA 是触发时的旧提交, 必须显式取 main
+          ref: main   # digest 已把每日 MD 推上 main；dispatch 默认 SHA 可能较旧
 
       - name: Generate index
         run: |
@@ -121,6 +114,21 @@ jobs:
         with:
           path: site/.vitepress/dist
 
+  # 阶段三：单独部署，避免上传 artifact 后立即查询产生竞态
+  deploy:
+    needs: build
+    if: ${{ needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5.0.1
