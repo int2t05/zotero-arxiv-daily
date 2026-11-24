@@ -117,7 +117,7 @@ jobs:
   # 阶段三：单独部署，避免上传 artifact 后立即查询产生竞态
   deploy:
     needs: build
-    if: ${{ needs.build.result == 'success' }}
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       pages: write
